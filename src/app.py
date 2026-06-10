@@ -1,23 +1,33 @@
+from modelo import treinar_modelo
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine
-
-engine = create_engine("postgresql://postgres:postgres@db:5432/postgres")
-
-query = """
-SELECT 
-    a.data, 
-    a.diagnostico, 
-    b.nome as bairro, 
-    p.faixa_etaria
-FROM atendimentos a
-JOIN pacientes p ON a.paciente_id = p.paciente_id
-JOIN bairros b ON a.bairro_id = b.bairro_id
-"""
-
-df = pd.read_sql(query, engine)
+import requests
 
 st.title("📊 Dashboard de Saúde")
+
+# Filtros enviados para a API
+bairro_filtro = st.text_input("Filtrar bairro")
+diagnostico_filtro = st.text_input("Filtrar diagnóstico")
+
+params = {}
+
+if bairro_filtro:
+    params["bairro"] = bairro_filtro
+
+if diagnostico_filtro:
+    params["diagnostico"] = diagnostico_filtro
+
+dados = requests.get(
+    "http://api:8000/dados",
+    params=params
+).json()
+
+df = pd.DataFrame(dados)
+
+# Evita erro quando não houver resultados
+if df.empty:
+    st.warning("Nenhum dado encontrado para os filtros selecionados.")
+    st.stop()
 
 st.dataframe(df)
 
@@ -33,8 +43,11 @@ st.subheader("📍 Atendimentos por bairro")
 grafico_bairro = df["bairro"].value_counts()
 st.bar_chart(grafico_bairro)
 
-#Filtro interativo por bairro
-bairro_selecionado = st.selectbox("Escolha um bairro", df["bairro"].unique())
+# Filtro interativo por bairro
+bairro_selecionado = st.selectbox(
+    "Escolha um bairro",
+    df["bairro"].unique()
+)
 
 df_filtrado = df[df["bairro"] == bairro_selecionado]
 
@@ -44,62 +57,40 @@ st.dataframe(df_filtrado)
 df["data"] = pd.to_datetime(df["data"])
 casos_por_dia = df.groupby("data").size()
 
-st.line_chart(casos_por_dia)
+st.subheader("🔮 Modelo Preditivo")
 
-# Casos por faixa etária
-faixa = df["faixa_etaria"].value_counts()
-st.bar_chart(faixa)
+modelo_escolhido = st.selectbox(
+    "Escolha o modelo",
+    ["Regressão Linear", "Random Forest"]
+)
 
-# Interpretação dos dados
-st.subheader("🧠 Insights")
+t0 = st.slider(
+    "Ponto de corte treino/teste",
+    min_value=10,
+    max_value=len(casos_por_dia)-5,
+    value=int(len(casos_por_dia)*0.7)
+)
 
-st.write("""
-- A doença mais frequente é: {}
-- O bairro com mais atendimentos é: {}
-""".format(
-    df["diagnostico"].value_counts().idxmax(),
-    df["bairro"].value_counts().idxmax()
-))
+y_real, y_prev, mae, rmse = treinar_modelo(
+    casos_por_dia,
+    modelo_escolhido,
+    t0
+)
 
-#Métricas
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
-col1.metric("Total de atendimentos", len(df))
-col2.metric("Total de bairros", df["bairro"].nunique())
-col3.metric("Doenças diferentes", df["diagnostico"].nunique())
+col1.metric("MAE", round(mae, 2))
+col2.metric("RMSE", round(rmse, 2))
 
-#Filtros mais completos
-diagnostico_sel = st.selectbox("Escolha um diagnóstico", df["diagnostico"].unique())
+import matplotlib.pyplot as plt
 
-df_filtrado = df[
-    (df["bairro"] == bairro_selecionado) &
-    (df["diagnostico"] == diagnostico_sel)
-]
+st.subheader("📉 Comparação: valores reais x previsão")
 
-st.dataframe(df_filtrado)
+fig, ax = plt.subplots()
 
-#Filtro por data
-data_inicio = st.date_input("Data inicial", df["data"].min())
-data_fim = st.date_input("Data final", df["data"].max())
+ax.plot(y_real, label="Real")
+ax.plot(y_prev, "--", label="Previsto")  # linha tracejada
 
-df_filtrado = df[
-    (df["data"] >= pd.to_datetime(data_inicio)) &
-    (df["data"] <= pd.to_datetime(data_fim))
-]
+ax.legend()
 
-#Insights adicionais
-st.write(f"""
-### 📊 Insights automáticos
-
-- Doença mais frequente: **{df["diagnostico"].value_counts().idxmax()}**
-- Bairro com mais atendimentos: **{df["bairro"].value_counts().idxmax()}**
-- Faixa etária mais afetada: **{df["faixa_etaria"].value_counts().idxmax()}**
-""")
-
-#Ordenar gráficos por frequência
-grafico = df["diagnostico"].value_counts().sort_values(ascending=False)
-st.bar_chart(grafico)
-
-#Casos por faixa etária ordenados
-faixa = df["faixa_etaria"].value_counts()
-st.bar_chart(faixa)
+st.pyplot(fig)

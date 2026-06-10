@@ -1,29 +1,50 @@
-
 services:
   db:
     image: postgres:15
     container_name: projeto-saude-db
     restart: always
+
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: saude
+
     ports:
       - "5432:5432"
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saude"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  api:
+    build: .
+    container_name: projeto-saude-api
+
+    command: >
+      bash -c "python src/generate_data.py &&
+      python -m uvicorn api.main:app
+      --host 0.0.0.0 --port 8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - .:/app
+
+    ports:
+      - "8000:8000"
 
   app:
     build: .
     container_name: projeto-saude-app
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    command: bash -c "python src/generate_data.py && streamlit run src/app.py"
+
+    command: streamlit run src/app.py --server.address 0.0.0.0
+
     ports:
       - "8501:8501"
+
+    depends_on:
+      - api

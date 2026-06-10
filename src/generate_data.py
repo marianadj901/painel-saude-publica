@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 
 # Conexão com o banco
-engine = create_engine("postgresql://postgres:postgres@db:5432/postgres")
+engine = create_engine("postgresql://postgres:postgres@db:5432/saude")
 
 with engine.connect() as conn:
 

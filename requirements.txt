@@ -3,3 +3,9 @@ pandas
 sqlalchemy
 psycopg2-binary
 faker
+scikit-learn
+numpy
+fastapi
+uvicorn
+requests
+matplotlib

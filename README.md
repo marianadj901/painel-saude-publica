@@ -61,6 +61,12 @@ Execute o Docker:
 docker compose up --build
 ```
 
+## Rotas da API
+
+GET /health
+GET /dados
+GET /resumo
+
 Depois acesse no navegador:
 
 ```txt
