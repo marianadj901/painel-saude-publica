@@ -1,9 +1,20 @@
+import time
 import random
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 
-# Conexão com o banco
-engine = create_engine("postgresql://postgres:postgres@db:5432/saude")
+engine = create_engine(
+    "postgresql://postgres:postgres@db:5432/saude"
+)
+
+for i in range(15):
+    try:
+        with engine.connect() as conn:
+            print("Banco conectado!")
+            break
+    except Exception:
+        print(f"Aguardando banco... tentativa {i+1}/15")
+        time.sleep(2)
 
 with engine.connect() as conn:
 
