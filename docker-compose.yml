@@ -23,9 +23,11 @@ services:
     container_name: projeto-saude-api
 
     command: >
-      bash -c "python src/generate_data.py &&
-      python -m uvicorn api.main:app
-      --host 0.0.0.0 --port 8000"
+      bash -c "
+      sleep 10 &&
+      python src/generate_data.py &&
+      python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+      "
 
     depends_on:
       db:
