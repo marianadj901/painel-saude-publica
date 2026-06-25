@@ -1,7 +1,11 @@
 # 🏥 Painel de Saúde Pública — AV2
 
 <p align="center">
-  <img src="dashboard.png" width="900">
+  <img src="src/dashboard.png" width="900">
+</p>
+
+<p align="center">
+  Dashboard interativo para análise e previsão de atendimentos em saúde pública.
 </p>
 
 Projeto desenvolvido para as Avaliações 1 e 2 da disciplina de Ciência de Dados (NES).
